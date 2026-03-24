@@ -85,7 +85,7 @@ def get_coefficients(F, Uinf, error_Uinf, rho, error_rho, S):
 
 
 def fit_polar(CL, CD, AoA):
-    AoA_max = 10
+    AoA_max = 12
     nmax = np.where(AoA <= AoA_max)[0][-1]
     cl = np.pow(CL[:nmax], 2)
     cd = CD[:nmax]
@@ -95,6 +95,10 @@ def fit_polar(CL, CD, AoA):
 def get_oswald_efficiency(CL, CD, AR, CD0):
     e = CL**2 / (np.pi * AR * (CD - CD0))
     return e
+
+def get_oswald_efficiency_fit(k, CD0, AR):
+    e_fit = 1 / (k * np.pi * AR)
+    return e_fit
 
 Uinf, error_Uinf = get_velocity(p_flow)
 rho, error_rho = get_rho(T)
@@ -120,7 +124,7 @@ cd_polar = CD0 + k * cl_polar**2
 
 # Oswald efficiency factor
 e = get_oswald_efficiency(CL, CD_wing, AR, CD0)
-
+e_fit = get_oswald_efficiency_fit(k, CD0, AR)
 
 # plt.plot(AoA, CD_wing, label='Cd wing')
 # plt.xlabel('Angle d\'attaque (°)')
@@ -165,7 +169,8 @@ print(f"Nombre de Reynolds: {Re:.2e} ± {error_Re:.2e}")
 print("-----------------------------")
 
 print("Coefficients de l'aile:")
+print(f"AR: {AR:.2f}")
 print(f"CD0: {CD0:.4f}")
 print(f"k: {k:.4f}")
-
+print(f"Oswald efficiency factor (fit): {e_fit:.4f}")
 
