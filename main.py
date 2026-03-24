@@ -32,7 +32,7 @@ UL_coefs = np.polyfit(UL_calib, MD_calib,1)
 
 
 # Variables environnementales
-T = 21 + 273.15 # K
+T = 22 + 273.15 # K
 R = 287.05 # J/(kg*K)
 
 def get_pressure_flow(p):
