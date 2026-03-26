@@ -9,11 +9,19 @@ b = 0.3 # m
 S = c_mean * b # m^2
 AR = b**2 / S
 
-# Mesures
-p_atm = 100964 # Pa
-p_flow = 166.5 # Pa 
+# Mesures 1
+# p_atm = 100964 # Pa
+# p_flow = 166.5 # Pa
+# T = 22 + 273.15 # K
 
-data = pd.read_csv('data.csv', sep=';', decimal=',')
+
+# Mesures 2 (Données de Dandoy)
+p_atm = 99965 # Pa
+p_flow = 166.5 # Pa
+T = 21 + 273.15 # K
+
+# data = pd.read_csv('data.csv', sep=';', decimal=',')
+data = pd.read_csv('data_dandoy.csv', sep=';', decimal=',')
 AoA = data['AoA'].values
 UL = data['UL'].values
 UD = data['UD'].values
@@ -32,7 +40,6 @@ UL_coefs = np.polyfit(UL_calib, MD_calib,1)
 
 
 # Variables environnementales
-T = 22 + 273.15 # K
 R = 287.05 # J/(kg*K)
 
 def get_pressure_flow(p):
@@ -85,7 +92,7 @@ def get_coefficients(F, Uinf, error_Uinf, rho, error_rho, S):
 
 
 def fit_polar(CL, CD, AoA):
-    AoA_max = 12
+    AoA_max = 10
     nmax = np.where(AoA <= AoA_max)[0][-1]
     cl = np.pow(CL[:nmax], 2)
     cd = CD[:nmax]
@@ -110,13 +117,8 @@ FL = get_force(UL, UL_coefs)
 CD, error_CD = get_coefficients(FD, Uinf, error_Uinf, rho, error_rho, S)
 CL, error_CL = get_coefficients(FL, Uinf, error_Uinf, rho, error_rho, S)
 
-"""
-On retire la contribution de la balance pour obtenir les coefficients de l'aile seule
-Quelle est surface de la balance ? 
-"""
 
-Sb = 5 *1e-4 # m^2, surface de la balance
-CD_wing = CD - (Cd_arm * Sb / S)
+CD_wing = CD - Cd_arm
 
 k, CD0 = fit_polar(CL, CD_wing, AoA)
 cl_polar = np.linspace(min(CL), max(CL), 100)
