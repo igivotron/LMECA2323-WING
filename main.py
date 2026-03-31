@@ -102,10 +102,12 @@ def get_coefficients(F, Uinf, error_Uinf, rho, error_rho, S):
 
 
 def fit_polar(CL, CD, AoA):
-    AoA_max = 8
+    AoA_max = 4
+    AoA_min = -4
     nmax = np.where(AoA <= AoA_max)[0][-1]
-    cl = np.power(CL[:nmax], 2)
-    cd = CD[:nmax]
+    nmin = np.where(AoA >= AoA_min)[0][0]
+    cl = np.power(CL[nmin:nmax], 2)
+    cd = CD[nmin:nmax]
     coeffs = np.polyfit(cl, cd, 1)
     return coeffs
 
@@ -116,6 +118,12 @@ def get_oswald_efficiency(CL, CD, AR, CD0):
 def get_oswald_efficiency_fit(k, CD0, AR):
     e_fit = 1 / (k * np.pi * AR)
     return e_fit
+
+def fit_cl_curve(AoA, CL):
+    coeffs = np.polyfit(AoA, CL, 1)
+    Cl = np.polyval(coeffs, 0)
+    alpha0 = -Cl / (2 * np.pi)
+    return coeffs, np.rad2deg(alpha0)
 
 Uinf, error_Uinf = get_velocity(p_flow)
 rho, error_rho = get_rho(T)
@@ -138,12 +146,21 @@ cd_polar = CD0 + k * cl_polar**2
 e = get_oswald_efficiency(CL, CD_wing, AR, CD0)
 e_fit = get_oswald_efficiency_fit(k, CD0, AR)
 
+# Stall AoA
+stall = np.where(CL == max(CL))[0][0]
+AoAs = np.linspace(min(AoA), AoA[stall+1], 100)
+
+# Approximation linéaire de CL par 2*pi(alpha-alpha0)
+coefs_cl, alpha0 = fit_cl_curve(AoA[:stall], CL[:stall])
+AoAs = np.linspace(min(AoA), AoA[stall+1], 100)
+cl_fit = coefs_cl[0] * AoAs + coefs_cl[1]
 """
 PLOTS
 """
 plt.figure(figsize=(12, 6))
 plt.plot(AoA, CL, 'o-', label='Experimental CL')
 plt.plot(AoA, CD_wing, 'o-', label='Experimental CD')
+plt.plot(AoAs, cl_fit, 'g--', label=f'slope={coefs_cl[0]:.4f}, alpha0={alpha0:.2f}°')
 plt.axvline(x = AoA[7], color='r', linestyle='--', label='Stall AoA')
 plt.xlabel('AoA (°)')
 plt.ylabel('Coefficients')
@@ -152,6 +169,7 @@ plt.legend()
 plt.grid()
 plt.tight_layout()
 plt.savefig('CL_CD_vs_AoA.pdf')
+
 
 plt.clf()
 plt.plot(cd_polar, cl_polar, 'r-', label='Fitted Polar')
@@ -179,6 +197,9 @@ print("Coefficients de l'aile:")
 print(f"AR: {AR:.2f}")
 print(f"CD0: {CD0:.4f}")
 print(f"k: {k:.4f}")
+print(f"Alpha0: {alpha0:.2f}°")
+print(f"Cl at stall: {CL[stall]:.4f}")
+print(f"Cl at 0 AoA: {coefs_cl[1]:.4f}")
 print(f"Oswald efficiency factor (fit): {e_fit:.4f}")
 print("===============================")
 
