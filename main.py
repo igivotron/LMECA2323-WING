@@ -19,12 +19,14 @@ AR = b**2 / S
 p_atm = 99965 # Pa
 p_flow = 166.5 # Pa
 T = 21 + 273.15 # K
+NoWindOFFSET_L = -0.118
+NoWindOFFSET_D = 0.17
 
 # data = pd.read_csv('data.csv', sep=';', decimal=',')
 data = pd.read_csv('data_dandoy.csv', sep=';', decimal=',')
 AoA = data['AoA'].values
-UL = data['UL'].values
-UD = data['UD'].values
+UL = data['UL'].values - NoWindOFFSET_L
+UD = data['UD'].values - NoWindOFFSET_D
 
 # Calibration
 Cd_arm = 0.06433
@@ -92,7 +94,7 @@ def get_coefficients(F, Uinf, error_Uinf, rho, error_rho, S):
 
 
 def fit_polar(CL, CD, AoA):
-    AoA_max = 10
+    AoA_max = 8
     nmax = np.where(AoA <= AoA_max)[0][-1]
     cl = np.pow(CL[:nmax], 2)
     cd = CD[:nmax]
