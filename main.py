@@ -19,14 +19,12 @@ AR = b**2 / S
 if data_origin == 0:
     # Mesures 1
     p_atm = 100964 # Pa
-    p_flow = 166.5 # Pa
     T = 22 + 273.15 # K
     NoWindOFFSET_L = -0.086
     NoWindOFFSET_D = 0.2
 else:
     # Mesures 2 (Données de Dandoy)
     p_atm = 99965 # Pa
-    p_flow = 166.5 # Pa
     T = 21 + 273.15 # K
     NoWindOFFSET_L = -0.118
     NoWindOFFSET_D = 0.17
@@ -36,7 +34,10 @@ else:
 data = pd.read_csv('data_dandoy.csv', sep=';', decimal=',')
 AoA = data['AoA'].values
 UL = data['UL'].values
-UD = data['UD'].values 
+UD = data['UD'].values
+
+dyn_pressure = pd.read_csv('M001.CSV', sep=",", decimal='.')
+pressure = dyn_pressure.iloc[:, 2].values
 
 # Calibration
 Cd_arm = 0.06433
@@ -53,9 +54,13 @@ UL_coefs = np.polyfit(UL_calib, MD_calib,1)
 R = 287.05 # J/(kg*K)
 
 def get_pressure_flow(p):
-    error_p_device = 0.001 * p + 0.03
+    p_mean = np.mean(p)
+    p_std = np.std(p)
+    z = 1.96
+    error_std = z * p_std / np.sqrt(len(p))
+    error_p_device = 0.001 * p_mean + 0.03
     error_p_reading = 0.01/2
-    return p, np.sqrt(error_p_device**2 + error_p_reading**2)
+    return p_mean, np.sqrt(error_p_device**2 + error_p_reading**2 + error_std**2)
 
 def get_pressure_ambiant(p):
     error_p_device = 4 # Pa Voir labo cylindre
@@ -78,8 +83,7 @@ def get_dynamic_viscosity(T):
     error_mu = abs(dmu_dT) * error_T
     return mu, error_mu
 
-def get_velocity(p):
-    p_flow, error_p_flow = get_pressure_flow(p)
+def get_velocity(p_flow, error_p_flow):
     rho, delta_rho = get_rho(T)
     v = np.sqrt(2 * p_flow / rho)
     error_v = v * np.sqrt((error_p_flow/p_flow)**2 + (delta_rho/rho)**2)
@@ -125,7 +129,8 @@ def fit_cl_curve(AoA, CL):
     alpha0 = -Cl / (2 * np.pi)
     return coeffs, np.rad2deg(alpha0)
 
-Uinf, error_Uinf = get_velocity(p_flow)
+p_flow, error_p_flow = get_pressure_flow(pressure)
+Uinf, error_Uinf = get_velocity(p_flow, error_p_flow)
 rho, error_rho = get_rho(T)
 mu, error_mu = get_dynamic_viscosity(T)
 Re, error_Re = get_Re(Uinf, error_Uinf, c_mean, mu, error_mu, rho, error_rho)
@@ -189,6 +194,8 @@ print("------------------------------")
 print("Conditions de l'air:")
 print(f"Densité de l'air: {rho:.2f} kg/m³ ± {error_rho:.6f} kg/m³")
 print(f"Pression de l'air: {p_atm:.2f} Pa ± {get_pressure_ambiant(p_atm)[1]:.2f} Pa")
+print(f"Température de l'air: {T-273.15:.2f} °C ± 0.5 °C")
+print(f"Pression dynamique: {p_flow:.2f} Pa ± {error_p_flow:.2f} Pa")
 print(f"Vitesse de l'air: {Uinf:.2f} m/s ± {error_Uinf:.6f} m/s")
 print(f"Viscosité dynamique de l'air: {mu:.6e} Pa·s ± {error_mu:.6e} Pa·s")
 print(f"Nombre de Reynolds: {Re:.2e} ± {error_Re:.2e}")
