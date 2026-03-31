@@ -1,6 +1,12 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import argparse as ap
+
+ap_parser = ap.ArgumentParser(description="Analyse des données de l'aile")
+ap_parser.add_argument('--origin', '-o',type=int, default=1, help='Fichier des données expérimentales. 0: nous, 1: Dandoy')
+args = ap_parser.parse_args()
+data_origin = args.origin
 
 # Constants
 g = 9.81 # m/s^2
@@ -9,24 +15,28 @@ b = 0.3 # m
 S = c_mean * b # m^2
 AR = b**2 / S
 
-# Mesures 1
-# p_atm = 100964 # Pa
-# p_flow = 166.5 # Pa
-# T = 22 + 273.15 # K
 
+if data_origin == 0:
+    # Mesures 1
+    p_atm = 100964 # Pa
+    p_flow = 166.5 # Pa
+    T = 22 + 273.15 # K
+    NoWindOFFSET_L = -0.086
+    NoWindOFFSET_D = 0.2
+else:
+    # Mesures 2 (Données de Dandoy)
+    p_atm = 99965 # Pa
+    p_flow = 166.5 # Pa
+    T = 21 + 273.15 # K
+    NoWindOFFSET_L = -0.118
+    NoWindOFFSET_D = 0.17
 
-# Mesures 2 (Données de Dandoy)
-p_atm = 99965 # Pa
-p_flow = 166.5 # Pa
-T = 21 + 273.15 # K
-NoWindOFFSET_L = -0.118
-NoWindOFFSET_D = 0.17
 
 # data = pd.read_csv('data.csv', sep=';', decimal=',')
 data = pd.read_csv('data_dandoy.csv', sep=';', decimal=',')
 AoA = data['AoA'].values
-UL = data['UL'].values - NoWindOFFSET_L
-UD = data['UD'].values - NoWindOFFSET_D
+UL = data['UL'].values
+UD = data['UD'].values 
 
 # Calibration
 Cd_arm = 0.06433
@@ -35,9 +45,7 @@ MD_calib = calibration_data['MD'].values
 UD_calib = calibration_data['UD'].values
 UL_calib = calibration_data['UL'].values
 
-# UD_coefs = np.polyfit(MD_calib, UD_calib, 1)
 UD_coefs = np.polyfit(UD_calib, MD_calib, 1)
-# UL_coefs = np.polyfit(MD_calib, UL_calib, 1)
 UL_coefs = np.polyfit(UL_calib, MD_calib,1)
 
 
@@ -84,8 +92,8 @@ def get_Re(U, error_U, D, mu, error_mu, rho, error_rho):
     return ReD, ReD_error
 
 
-def get_force(Uv, coefs):
-    return (coefs[0] * Uv+ coefs[1]) * g
+def get_force(Uv, coefs, offset):
+    return (coefs[0] * (Uv-offset)) * g
 
 def get_coefficients(F, Uinf, error_Uinf, rho, error_rho, S):
     C = F / (0.5 * rho * Uinf**2 * S)
@@ -96,7 +104,7 @@ def get_coefficients(F, Uinf, error_Uinf, rho, error_rho, S):
 def fit_polar(CL, CD, AoA):
     AoA_max = 8
     nmax = np.where(AoA <= AoA_max)[0][-1]
-    cl = np.pow(CL[:nmax], 2)
+    cl = np.power(CL[:nmax], 2)
     cd = CD[:nmax]
     coeffs = np.polyfit(cl, cd, 1)
     return coeffs
@@ -114,8 +122,8 @@ rho, error_rho = get_rho(T)
 mu, error_mu = get_dynamic_viscosity(T)
 Re, error_Re = get_Re(Uinf, error_Uinf, c_mean, mu, error_mu, rho, error_rho)
 
-FD = get_force(UD, UD_coefs)
-FL = get_force(UL, UL_coefs)
+FD = get_force(UD, UD_coefs, NoWindOFFSET_D)
+FL = get_force(UL, UL_coefs, NoWindOFFSET_L)
 CD, error_CD = get_coefficients(FD, Uinf, error_Uinf, rho, error_rho, S)
 CL, error_CL = get_coefficients(FL, Uinf, error_Uinf, rho, error_rho, S)
 
@@ -157,6 +165,8 @@ plt.tight_layout()
 plt.savefig('Polar_Curve.pdf')
 
 
+print("===============================")
+print("Origine des données:", "Dandoy" if data_origin == 1 else "Nous")
 print("------------------------------")
 print("Conditions de l'air:")
 print(f"Densité de l'air: {rho:.2f} kg/m³ ± {error_rho:.6f} kg/m³")
@@ -165,10 +175,10 @@ print(f"Vitesse de l'air: {Uinf:.2f} m/s ± {error_Uinf:.6f} m/s")
 print(f"Viscosité dynamique de l'air: {mu:.6e} Pa·s ± {error_mu:.6e} Pa·s")
 print(f"Nombre de Reynolds: {Re:.2e} ± {error_Re:.2e}")
 print("-----------------------------")
-
 print("Coefficients de l'aile:")
 print(f"AR: {AR:.2f}")
 print(f"CD0: {CD0:.4f}")
 print(f"k: {k:.4f}")
 print(f"Oswald efficiency factor (fit): {e_fit:.4f}")
+print("===============================")
 
